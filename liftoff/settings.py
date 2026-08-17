@@ -25,7 +25,24 @@ SECRET_KEY = 'django-insecure-l(&^4gm(sj67p+p=4cham&1=%k3lo9uugb*r00_l+ugn+$x$in
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "*").split(",") if h.strip()]
+
+# Origins allowed to send unsafe requests (POST/PUT/PATCH/DELETE). Django matches
+# the request's Origin header against this list, so entries need a scheme -- and a
+# port if it is non-standard -- unlike ALLOWED_HOSTS, which takes bare hostnames.
+# On Railway, set this to https://${{RAILWAY_PUBLIC_DOMAIN}} so it tracks the
+# generated domain instead of being pinned to whatever it is today.
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
+]
+
+# Railway terminates TLS at its edge proxy and forwards plain HTTP to the
+# container, so without this Django sees request.is_secure() as False and rejects
+# the CSRF referer check on HTTPS form posts. Only trust the header where such a
+# proxy actually exists: it is client-supplied, and private network traffic
+# (*.railway.internal) reaches the container without passing through the proxy.
+if os.getenv("RAILWAY_ENVIRONMENT_NAME"):
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # CELERY SETTINGS
 
